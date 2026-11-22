@@ -1,0 +1,14 @@
+// Cấu hình Cloudflare Workers (chỉ phục vụ file tĩnh, không có code chạy phía server).
+// Cloudflare chạy `npm run build` rồi `npx wrangler deploy`: đưa thư mục dist/ lên.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tao-bai-tap",
+  "compatibility_date": "2026-11-15",
+  "assets": {
+    "directory": "./dist",
+    // /huong-dan phục vụ huong-dan.html; /huong-dan.html tự chuyển sang /huong-dan
+    "html_handling": "auto-trailing-slash",
+    // Đường dẫn không tồn tại trả 404 thật (không trả trang chủ), tốt cho SEO
+    "not_found_handling": "none"
+  }
+}

@@ -20,7 +20,7 @@ npm test               # unit test (chạy từ C:\project\scan_bai, chữ C hoa
 npm run build          # xuất trang tĩnh ra dist/
 ```
 
-> Nút **Chia sẻ** và việc mở camera ổn định nhất khi chạy trên HTTPS. Khi thử bằng IP mạng LAN (http://192.168…) có thể nút Chia sẻ không hiện; sau khi deploy lên Cloudflare Pages (HTTPS) thì sẽ có.
+> Nút **Chia sẻ** và việc mở camera ổn định nhất khi chạy trên HTTPS. Khi thử bằng IP mạng LAN (http://192.168…) có thể nút Chia sẻ không hiện; sau khi deploy lên Cloudflare (HTTPS) thì sẽ có.
 
 ## Bật quảng cáo (AdSense / Ezoic)
 
@@ -48,34 +48,37 @@ Vị trí quảng cáo: banner đầu trang (728×90, điện thoại 320×100),
 
 Code quảng cáo nằm trong `src/ads/`. `parse.ts` đọc cấu hình, `AdSlot.tsx` là một vị trí quảng cáo, và `vite-plugin-site.ts` chèn thẻ vào `<head>` và sinh `ads.txt`, `sitemap.xml`.
 
-## Deploy lên Cloudflare Pages (miễn phí)
+## Deploy lên Cloudflare Workers (miễn phí)
 
-Web chỉ gồm file tĩnh nên không cần server. Cloudflare Pages miễn phí, cho phép web có quảng cáo, có HTTPS cho tên miền riêng và có máy chủ tại Việt Nam.
+Web chỉ gồm file tĩnh nên không cần server. Cloudflare phục vụ file tĩnh miễn phí, cho phép web có quảng cáo, có HTTPS cho tên miền riêng và có máy chủ tại Việt Nam. File `wrangler.jsonc` khai báo thư mục `dist/` cần đưa lên; dự án không có code chạy phía server.
 
 **Cách 1: tự deploy mỗi lần push lên GitHub (nên dùng)**
-1. Tạo repo **private** trên GitHub rồi đẩy code lên:
-   ```bash
-   git remote add origin https://github.com/<tài-khoản>/<tên-repo>.git
-   git push -u origin main
-   ```
-2. Vào Cloudflare Dashboard → **Workers & Pages** → **Create** → tab **Pages** → **Connect to Git**, rồi chọn repo.
-3. Cấu hình build:
-   - Framework preset: `None` (hoặc `Vite`)
+1. Đẩy code lên một repo GitHub (private).
+2. Vào Cloudflare Dashboard → **Workers & Pages** → **Create** → **Import a repository**, rồi chọn repo.
+3. Điền màn hình "Set up your application":
+   - Project name: `tao-bai-tap` (phải trùng `name` trong `wrangler.jsonc`)
    - Build command: `npm run build`
-   - Build output directory: `dist`
-   - Phiên bản Node lấy từ file `.node-version` (22), không cần khai báo thêm.
-4. **Environment variables** (Production): `VITE_SITE_URL`, và khi có mã AdSense thì thêm `VITE_AD_PROVIDER`, `VITE_ADSENSE_CLIENT`, `VITE_AD_SLOT_*` (xem `.env.example`). Đổi biến xong phải **Retry deployment** thì mới có hiệu lực, vì biến được đọc lúc build.
-5. Mỗi lần `git push` lên nhánh `main`, Cloudflare tự build và deploy lại. Nhánh khác có link xem thử riêng.
+   - Deploy command: `npx wrangler deploy`
+   - Non-production branch deploy command: giữ mặc định
+   - Advanced settings → Path: `/`
+   - Phiên bản Node lấy từ file `.node-version` (22).
+4. **Biến môi trường:** vào Advanced settings → **Build variables**, thêm `VITE_SITE_URL=https://ten-mien.vn`. Khi có mã AdSense thì thêm `VITE_AD_PROVIDER`, `VITE_ADSENSE_CLIENT`, `VITE_AD_SLOT_*` (xem `.env.example`). Sau khi tạo dự án, các biến này nằm ở Settings → Build → **Build variables and secrets**.
+   
+   Đây phải là biến **lúc build**, không phải "Variables and Secrets" lúc chạy, vì các biến `VITE_*` được ghi thẳng vào file khi build. Đổi biến xong phải deploy lại (push code mới hoặc bấm Retry build) thì mới có hiệu lực.
+5. Mỗi lần `git push` lên nhánh `main`, Cloudflare tự build và deploy lại.
 
 **Cách 2: upload thẳng từ máy (không cần GitHub)**
 ```bash
-npm run build                                       # đọc biến từ .env.production
-npx wrangler pages deploy dist --project-name=<tên-dự-án>
+npm run build          # đọc biến từ .env.production
+npx wrangler login     # lần đầu
+npx wrangler deploy
 ```
 
-**Gắn tên miền:** trong dự án Pages vào **Custom domains** → **Set up a domain**. Tên miền mua ở Cloudflare thì tự cấu hình. Tên miền `.vn` mua ở nơi khác thì trỏ nameserver về Cloudflare (hoặc tạo bản ghi CNAME như Cloudflare hướng dẫn). HTTPS tự bật.
+**Chạy thử giống hệt trên Cloudflare:** `npm run build && npx wrangler dev`, rồi mở http://localhost:8787.
 
-**Đường dẫn:** Cloudflare phục vụ `huong-dan.html` ở `/huong-dan`. Link nội bộ, `sitemap.xml` và thẻ canonical đều dùng dạng không đuôi `.html` này. Khi chạy dev/preview trên máy, plugin trong `vite-plugin-site.ts` làm điều tương tự. File `public/_headers` cấu hình cache lâu cho `assets/` và `fonts/`.
+**Gắn tên miền:** vào Worker `tao-bai-tap` → **Settings** → **Domains & Routes** → **Add** → **Custom domain**. Tên miền mua ở Cloudflare thì tự cấu hình. Tên miền `.vn` mua ở nơi khác thì trước tiên thêm tên miền vào Cloudflare và trỏ nameserver về Cloudflare. HTTPS tự bật.
+
+**Đường dẫn:** Cloudflare phục vụ `huong-dan.html` ở `/huong-dan` (cấu hình `html_handling` trong `wrangler.jsonc`). Đường dẫn không tồn tại trả về 404. Link nội bộ, `sitemap.xml` và thẻ canonical đều dùng dạng không đuôi `.html` này. Khi chạy dev/preview trên máy, plugin trong `vite-plugin-site.ts` làm điều tương tự. File `public/_headers` cấu hình cache lâu cho `assets/` và `fonts/`.
 
 ## Cấu trúc
 - `src/lib/layout.ts`: thuật toán xếp câu lên trang A4 (dùng chung cho xem trước và PDF)
